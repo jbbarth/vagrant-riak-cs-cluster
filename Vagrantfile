@@ -3,7 +3,7 @@
 
 $LOAD_PATH.unshift("lib") unless $LOAD_PATH.include?("lib")
 
-require "berkshelf/vagrant"
+#require "berkshelf/vagrant"
 require "erlang_template_helper"
 
 CENTOS = {
@@ -22,26 +22,26 @@ OS            = UBUNTU
 BASE_IP       = "33.33.33"
 IP_INCREMENT  = 10
 
-Vagrant::Config.run do |cluster|
+Vagrant.configure("2") do |cluster|
   (1..NODES).each do |index|
     last_octet = index * IP_INCREMENT
 
     cluster.vm.define "riak#{index}".to_sym do |config|
       # Configure the VM and operating system.
-      config.vm.customize ["modifyvm", :id, "--memory", 1024]
       config.vm.box = OS[:box]
       config.vm.box_url = OS[:url]
+      config.vm.provider(:virtualbox) { |v| v.customize ["modifyvm", :id, "--memory", 1024] }
 
       # Setup the network and additional file shares.
       if index == 1
-        config.vm.forward_port 8080, 8080
-        config.vm.forward_port 8085, 8085
-        config.vm.forward_port 8087, 8087
+        config.vm.network :forwarded_port, guest: 8080, host: 8080
+        config.vm.network :forwarded_port, guest: 8085, host: 8085
+        config.vm.network :forwarded_port, guest: 8087, host: 8087
       end
 
-      config.vm.host_name = "riak#{index}"
-      config.vm.network :hostonly, "#{BASE_IP}.#{last_octet}"
-      config.vm.share_folder "lib", "/tmp/vagrant-chef-1/lib", "lib"
+      config.vm.hostname = "riak#{index}"
+      config.vm.network :private_network, ip: "#{BASE_IP}.#{last_octet}"
+      config.vm.synced_folder "lib/", "/tmp/vagrant-chef-1/lib"
 
       # Provision using Chef.
       config.vm.provision :chef_solo do |chef|
